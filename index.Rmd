@@ -2,10 +2,11 @@
 title: "Peter Galante samples of work"
 output: html_document
 date: "2025-10-06"
+runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message = FALSE)
 ```
 
 ## Background
@@ -15,6 +16,87 @@ support environmental planning, green infrastructure projects, and scientific re
 and SQL, with a strong background in ecological analysis, spatial modeling, and geospatial data visualization. Skilled in 
 managing GIS databases, optimizing workflows, and integrating geospatial insights into project planning and 
 decision-making. Can engage stakeholders in non-technical explanations of complex processes.
+
+```{r load data, results = 'hide', include = T, echo = F, warning=F, message=F}
+library(shiny)
+library(sf)
+library(ggplot2)
+library(leaflet.extras)
+states <- st_read(dsn = "C:/Users/peter/Layers/ne_10m_admin_1_states_provinces", layer = "ne_10m_admin_1_states_provinces")
+USA <- states[states$admin == "United States of America",]
+USA2 <- USA
+USA3 <- USA2[!USA2$name %in% c("Alaska", "Hawaii"),]
+#load state pop data
+statepop<- read.csv("C:/Users/peter/Downloads/popState.csv")
+# merge 
+USApop <- merge(x = USA3, y = statepop, by = 'name')
+```
+
+### Example interactive map
+#### Interactive shiny app web map showing population data, per census, across lower 48.
+Shiny apps can behave similarly to PowerBI dashboards, but are more customizable, with an R backend to increase reproducibility and speed.
+
+```{r shiny app, include = T, echo = F, warning=F, message=F}
+ui<- bootstrapPage(
+  leafletOutput("mymap"),
+  absolutePanel(bottom = 1, 
+                left = 0,
+                fixed = F,
+                radioButtons("radio", h3("Year"),
+                             choices = list("1990" = "Attr1",
+                                            "2000" = "Attr2",
+                                            "2010" = "Attr3",
+                                            "2020" = "Attr4",
+                                            "2023" ="Attr5")))
+)
+
+
+server <- function(input, output, session) {
+  v <- reactiveValues(data = USApop$X1990)
+  
+  observeEvent(input$radio,{ 
+    
+    if(input$radio=="Attr1"){
+      v$data <- USApop$X1990
+    }
+    if(input$radio=="Attr2"){
+      v$data <- USApop$X2000
+    }
+    if(input$radio=="Attr3"){
+      v$data <- USApop$X2010
+    }
+    if(input$radio=="Attr4"){
+      v$data <- USApop$X2020
+    }
+    if(input$radio=="Attr5"){
+      v$data <- USApop$X2023
+    }
+  })
+
+  
+  output$mymap <- renderLeaflet({
+    cont_palette <- colorRampPalette(c("yellow","red"))
+    color_function <- colorBin(
+      bins = c(453589, 550000, 700000, 1000000, 5000000, 10000000, 20000000, 30000000, 39538212),
+      cont_palette(50),
+      domain = USApop)
+    
+    leaflet(USApop) %>%  
+#      addProviderTiles(
+#        providers$"CartoDB.DarkMatter") %>%
+      addPolygons(
+        fillColor = ~color_function(v$data),
+        weight = 1,
+        opacity = 0.25,
+        color = "white",
+        fillOpacity = 0.75)
+  })
+}
+
+shinyApp(ui = ui, server = server)
+
+```
+
 
 ## Samples of work
 #### Urban conservation
@@ -29,7 +111,9 @@ decision-making. Can engage stakeholders in non-technical explanations of comple
 <br>
 
 ## Relevant publications
-#### Range maps, habitat use, and implications for conservation
+<center>
+#### Data visualization: Range maps, habitat use, and implications for conservation
+</center>
 <br> 
 
 | **A comparison of Maxent's default settings with two optimal model selection techniques for a species with few known localities, in both high and low sampling bias environments.**  | **Finding that karst topography is an apparent abiotic driver of François’ langur distribution projected into multiple climate scenarios.** |
